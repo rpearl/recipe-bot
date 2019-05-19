@@ -1,5 +1,5 @@
 'use strict';
-
+const querystring = require('querystring');
 const Airtable = require('airtable');
 const Slack = require('slack');
 const randomSample = require('lodash.samplesize');
@@ -29,7 +29,8 @@ async function getAllSources(specialities = ['']) {
 async function getAuthors(sources) {
     const authorRecordIds = new Set();
     for (const source of sources) {
-        for (const authorRecordId of source.get('Author')) {
+        const authors = source.get('Author') || [];
+        for (const authorRecordId of authors) {
             authorRecordIds.add(authorRecordId);
         }
     }
@@ -59,12 +60,36 @@ function formatNounList(nounList) {
     }
 }
 
+function reformatBlockFromPayload(block) {
+    if (block.type === 'divider') {
+        return {type: 'divider'};
+    } else if (block.type === 'section') {
+        const {text} = block;
+        let accessory;
+        if (block.accessory) {
+            accessory = {
+                type: 'image',
+                image_url: block.accessory.image_url,
+                alt_text: block.accessory.alt_text,
+            };
+        }
+        return {
+            type: 'section',
+            text,
+            accessory,
+        };
+    } else {
+        return block;
+    }
+}
+
 function formatTitle(source, authorsById) {
     const title = source.get('Name');
     const url = `https://airtable.com/tblu6Knj4SHo2O6o6/${source.id}`;
-    const authorIds = source.get('Author');
-    const authorNames = formatNounList(authorIds.map(id => authorsById.get(id)));
-    return `*<${url}|${title}>* by ${authorNames}`;
+    const authorIds = source.get('Author') || [];
+    const authorNames = authorIds.length > 0 ? ' by ' + formatNounList(authorIds.map(id => authorsById.get(id))) : '';
+
+    return `*<${url}|${title}>*${authorNames}`;
 }
 
 function formatSource(source, authorsById) {
@@ -95,7 +120,85 @@ ${source.get("Recipe Count")} recipes`;
     return block;
 }
 
+function disableAction(block, target_action_id) {
 
+    const elements = block.elements.map(element => {
+        let action_id = element.action_id;
+        let text = element.text.text;
+        if (action_id === target_action_id) {
+            action_id += 'disabled';
+            text += ' :heavy_check_mark:';
+        }
+
+        return {
+            type: 'button',
+            action_id,
+            text: {
+                type: "plain_text",
+                emoji: true,
+                text,
+            }
+        };
+    });
+
+    return {
+        type: 'actions',
+        elements,
+    };
+}
+
+async function sendSpeciality(payload, action_id, specialities) {
+    const {message, response_url} = payload;
+    const sources = await getAllSources(specialities);
+    const selected = randomSample(sources, 1);
+    const authorsById = await getAuthors(selected);
+
+    const text = message.text;
+    const blocks = [
+        ...message.blocks.slice(0, -1).map(reformatBlockFromPayload),
+        {type: 'divider'},
+        formatSource(selected[0], authorsById),
+        disableAction(message.blocks[message.blocks.length-1], action_id),
+    ];
+    await bot.chat.update({
+        channel: payload.channel.id,
+        ts: message.ts,
+        text,
+        blocks,
+    });
+}
+
+module.exports.handleButton = async (event, context, callback) => {
+    const data = querystring.parse(event.body);
+    const payload = JSON.parse(data.payload);
+    const response_url = payload['response_url'];
+    const action = payload.actions[0];
+    let specialities;
+    if (action.action_id === "dessert") {
+        specialities = ['dessert'];
+    } else if (action.action_id === 'drinks') {
+        specialities = ['drinks'];
+    }
+    if (specialities) {
+        await sendSpeciality(payload, action.action_id, specialities);
+    }
+    return {
+        statusCode: 200,
+        body: '',
+    };
+}
+
+function button({text, action_id}) {
+    return {
+        type: "button",
+        text: {
+            type: "plain_text",
+            text,
+            emoji: true
+        },
+        action_id,
+    };
+}
 
 module.exports.getRandomSources = async (event) => {
     const sources = await getAllSources();
@@ -114,6 +217,14 @@ module.exports.getRandomSources = async (event) => {
         blocks.push(formatSource(source, authorsById));
     }
 
+    blocks.push({
+        type: 'actions',
+        elements: [
+            button({text: ':cake: Add Dessert', action_id: 'dessert'}),
+            button({text: ':tropical_drink: Add Drink', action_id: 'drinks'}),
+        ],
+    });
+
     const titles = selected.map(source => formatTitle(source, authorsById));
 
     await bot.chat.postMessage({
@@ -126,5 +237,4 @@ module.exports.getRandomSources = async (event) => {
     statusCode: 200,
     body: blocks,
   };
-
-};
+}

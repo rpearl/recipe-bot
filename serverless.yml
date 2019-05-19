@@ -65,6 +65,13 @@ functions:
       SLACK_BOT_TOKEN: ${file(creds.yml):SLACK_BOT_TOKEN}
     events:
       - schedule: cron(0 16 ? * THU *)
+  handleButton:
+    handler: handler.handleButton
+    environment:
+      AIRTABLE_API_KEY: ${file(creds.yml):AIRTABLE_API_KEY}
+      SLACK_BOT_TOKEN: ${file(creds.yml):SLACK_BOT_TOKEN}
+    events:
+      - http: POST handleButton
 
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
