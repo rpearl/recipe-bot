@@ -1,0 +1,16 @@
+{
+  "name": "recipe-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "airtable": "^0.6.0",
+    "lodash.samplesize": "^4.2.0",
+    "slack": "^11.0.2"
+  }
+}
