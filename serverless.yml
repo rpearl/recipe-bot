@@ -61,15 +61,21 @@ functions:
   getRandomSources:
     handler: handler.getRandomSources
     environment:
-      AIRTABLE_API_KEY: ${file(creds.yml):AIRTABLE_API_KEY}
-      SLACK_BOT_TOKEN: ${file(creds.yml):SLACK_BOT_TOKEN}
+      AIRTABLE_API_KEY: ${file(config.yml):AIRTABLE_API_KEY}
+      SLACK_BOT_TOKEN: ${file(config.yml):SLACK_BOT_TOKEN}
+      SLACK_CHANNEL: ${file(config.yml):SLACK_CHANNEL}
+      AIRTABLE_BASE: ${file(config.yml):AIRTABLE_BASE}
+      NUM_INITIAL: ${file(config.yml):NUM_INITIAL}
     events:
       - schedule: cron(0 16 ? * THU *)
   handleButton:
     handler: handler.handleButton
     environment:
-      AIRTABLE_API_KEY: ${file(creds.yml):AIRTABLE_API_KEY}
-      SLACK_BOT_TOKEN: ${file(creds.yml):SLACK_BOT_TOKEN}
+      AIRTABLE_API_KEY: ${file(config.yml):AIRTABLE_API_KEY}
+      SLACK_BOT_TOKEN: ${file(config.yml):SLACK_BOT_TOKEN}
+      SLACK_CHANNEL: ${file(config.yml):SLACK_CHANNEL}
+      AIRTABLE_BASE: ${file(config.yml):AIRTABLE_BASE}
+      NUM_INITIAL: ${file(config.yml):NUM_INITIAL}
     events:
       - http: POST handleButton
 

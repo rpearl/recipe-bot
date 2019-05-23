@@ -5,9 +5,10 @@ const Slack = require('slack');
 const randomSample = require('lodash.samplesize');
 
 const bot = new Slack({token: process.env.SLACK_BOT_TOKEN});
-const base = new Airtable().base('appFFph4k0QMqckaK');
+const base = new Airtable().base(process.env.AIRTABLE_BASE);
 
-const channel = 'food';
+const channel = process.env.SLACK_CHANNEL;
+const numInitial = process.env.NUM_INITIAL;
 
 async function getAllSources(specialities = ['']) {
     const records = [];
@@ -202,14 +203,14 @@ function button({text, action_id}) {
 
 module.exports.getRandomSources = async (event) => {
     const sources = await getAllSources();
-    const selected = randomSample(sources, 5);
+    const selected = randomSample(sources, numInitial);
     const authorsById = await getAuthors(selected);
 
     const blocks = [{
         type: "section",
         text: {
             type: "mrkdwn",
-            text: "Here's five cookbooks for meal planning",
+            text: `Here's ${numInitial} cookbooks for meal planning`,
         },
     }];
     for (const source of selected) {
